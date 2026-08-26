@@ -8,7 +8,8 @@ The Active Directory Bulk User Provisioning Tool (`NewADUsers.ps1`) automates cr
 | **1** | **Program** | **yearofgraduation** | **firstname** | **lastname** | **username** |
 | **2** | CCA | 2030 | Robert | Saget | 30CCARS |
 
-To run the tool on a Domain Controller, launch an elevated PowerShell prompt within the script's directory. Running `.\NewADUsers.ps1` defaults to **Audit Mode**, providing a color-coded console summary of proposed account creations and password resets without modifying Active Directory. 
+To run the tool on a Domain Controller, launch an elevated PowerShell prompt within the script's directory. Running `.\NewADUsers.ps1` defaults to **Audit Mode**, providing a color-coded console summary of proposed account creations and password resets without modifying Active Directory.
+
 ![AuditMode](audit-mode.png)
 
 
