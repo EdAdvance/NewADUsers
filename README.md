@@ -14,4 +14,5 @@ To run the tool on a Domain Controller, launch an elevated PowerShell prompt wit
 
 
 After reviewing the dry run, execute `.\NewADUsers.ps1 -authorize` to apply live directory changes and output a timestamped summary report CSV (`ADUsers_Results_YYYYMMDD_HHMMSS.csv`) detailing all completed actions and error messages.
+
 ![Authorize Mode](authorize-mode.png)
