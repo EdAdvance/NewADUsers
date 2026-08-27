@@ -1,12 +1,14 @@
 [CmdletBinding()]
 param (
-    [Switch]$Authorize
+    [Switch]$Authorize,
+    [Switch]$NoReset
 )
 #########################################
 # Edited by Jaren Havell using Gimmney  #
 # Original from  NetworkProGuide.com    #
-# Version 1.3                           #
+# Version 1.4                           #
 #########################################
+
 # Import the AD module
 Import-Module activedirectory  
 
@@ -14,9 +16,9 @@ Import-Module activedirectory
 $ADUsers = Import-csv .\NewADUsers.csv
 
 # ============================================================================
-# MODE 1: AUDIT MODE (DEFAULT)
+# MODE 1: AUDIT MODE (DEFAULT - Neither -Authorize nor -NoReset specified)
 # ============================================================================
-if (-not $Authorize)
+if (-not $Authorize -and -not $NoReset)
 {
     Write-Host "`n==========================================" -ForegroundColor Cyan
     Write-Host "             AUDIT MODE ACTIVE            " -ForegroundColor Cyan
@@ -56,18 +58,21 @@ if (-not $Authorize)
     Write-Host "Passwords to Reset       : $ProposedUpdates" -ForegroundColor Yellow
     Write-Host "------------------------------------------`n" -ForegroundColor DarkGray
 
-    Write-Host "NOTE: You have run this script in audit mode. After you have reviewed the proposed items below, re-run the script with -authorize" -ForegroundColor Magenta
+    Write-Host "NOTE: You have run this script in audit mode. After you have reviewed the proposed items below, re-run the script with -authorize or -noreset" -ForegroundColor Magenta
     Write-Host ""
 }
 
 # ============================================================================
-# MODE 2: AUTHORIZE MODE (EXECUTE CHANGES)
+# LIVE EXECUTION MODES (-Authorize or -NoReset)
 # ============================================================================
 else
 {
-    Write-Host "`n==========================================" -ForegroundColor Green
-    Write-Host "           AUTHORIZE MODE ACTIVE          " -ForegroundColor Green
-    Write-Host "==========================================" -ForegroundColor Green
+    $ModeTitle = if ($NoReset) { "NO-RESET MODE ACTIVE (Create Only)" } else { "AUTHORIZE MODE ACTIVE (Full Processing)" }
+    $HeaderColor = if ($NoReset) { "DarkYellow" } else { "Green" }
+
+    Write-Host "`n==========================================" -ForegroundColor $HeaderColor
+    Write-Host "    $ModeTitle    " -ForegroundColor $HeaderColor
+    Write-Host "==========================================" -ForegroundColor $HeaderColor
     Write-Host "Applying changes to Active Directory...`n" -ForegroundColor DarkGray
 
     $Results = @()
@@ -100,34 +105,49 @@ else
 
         if ($ExistingUser)
         {
-            # Match found: Update password
-            try {
-                Set-ADAccountPassword -Identity $ExistingUser.SamAccountName -NewPassword $SecurePassword -Reset -ErrorAction Stop
-                
-                Write-Host "[UPDATED] Password changed for existing user: $($ExistingUser.SamAccountName)" -ForegroundColor Yellow
+            if ($NoReset)
+            {
+                # Mode 3 (-NoReset): Skip user completely
+                Write-Host "[SKIPPED] User '$Username' already exists. Skipping password reset." -ForegroundColor DarkGray
 
                 $Results += [PSCustomObject]@{
                     Timestamp    = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
                     Username     = $Username
-                    Status       = "Password Updated"
+                    Status       = "Skipped"
                     ErrorDetails = ""
                 }
             }
-            catch {
-                $ErrMsg = $_.Exception.Message
-                Write-Host "[FAILED] Password reset for ${Username}: $ErrMsg" -ForegroundColor Red
+            else
+            {
+                # Mode 2 (-Authorize): Reset password
+                try {
+                    Set-ADAccountPassword -Identity $ExistingUser.SamAccountName -NewPassword $SecurePassword -Reset -ErrorAction Stop
+                    
+                    Write-Host "[UPDATED] Password changed for existing user: $($ExistingUser.SamAccountName)" -ForegroundColor Yellow
 
-                $Results += [PSCustomObject]@{
-                    Timestamp    = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-                    Username     = $Username
-                    Status       = "Failed (Password Reset)"
-                    ErrorDetails = $ErrMsg
+                    $Results += [PSCustomObject]@{
+                        Timestamp    = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                        Username     = $Username
+                        Status       = "Password Updated"
+                        ErrorDetails = ""
+                    }
+                }
+                catch {
+                    $ErrMsg = $_.Exception.Message
+                    Write-Host "[FAILED] Password reset for ${Username}: $ErrMsg" -ForegroundColor Red
+
+                    $Results += [PSCustomObject]@{
+                        Timestamp    = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                        Username     = $Username
+                        Status       = "Failed (Password Reset)"
+                        ErrorDetails = $ErrMsg
+                    }
                 }
             }
         }
         else
         {
-            # No match: Create new user
+            # No match found: Create new user account
             try {
                 New-ADUser `
                     -SamAccountName $Username `
@@ -173,7 +193,7 @@ else
         }
     }
 
-    # Export results to CSV
+    # Export results to CSV log
     $OutputFile = ".\ADUsers_Results_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
     $Results | Export-Csv -Path $OutputFile -NoTypeInformation
 
