@@ -19,4 +19,5 @@ After reviewing the dry run, execute `.\NewADUsers.ps1 -authorize` to apply live
 
 Additionally, there is the option to skip existing users, and in this mode passwords are not changed.
 execute `.\NewADUsers.ps1 -noreset` to skip over existing users.
+
 ![Authorize Mode](noreset-mode.png)
